@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.vanillacoffeesystem.OrderHistoryController"
+            style="-fx-background-color: #faf7f4;">
+
+    <top>
+        <VBox spacing="0" style="-fx-background-color: white; -fx-border-color: #efe6df; -fx-border-width: 0 0 1 0;">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <padding>
+                    <Insets top="14" right="28" bottom="14" left="28"/>
+                </padding>
+                <Button text="← Home" onAction="#backToHome"
+                        style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-cursor: hand;"/>
+                <Label text="My Orders"
+                       style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #4e342e;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="Filter:" style="-fx-font-size: 13px; -fx-text-fill: #8d6e63;"/>
+                <ComboBox fx:id="statusFilterCombo" prefWidth="140" onAction="#filterByStatus"
+                          style="-fx-font-size: 13px;"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="16" style="-fx-padding: 24 28;">
+            <TableView fx:id="ordersTable" prefHeight="320">
+                <columns>
+                    <TableColumn fx:id="orderIdColumn" text="Order ID" prefWidth="90"/>
+                    <TableColumn fx:id="orderDateColumn" text="Date" prefWidth="120"/>
+                    <TableColumn fx:id="branchColumn" text="Branch" prefWidth="200"/>
+                    <TableColumn fx:id="statusColumn" text="Status" prefWidth="120"/>
+                    <TableColumn fx:id="totalColumn" text="Total (₪)" prefWidth="110"/>
+                </columns>
+            </TableView>
+
+            <VBox fx:id="detailPanel" spacing="10" visible="false" managed="false"
+                  style="-fx-background-color: white; -fx-background-radius: 12; -fx-border-color: #e8ddd4; -fx-border-radius: 12; -fx-border-width: 1; -fx-padding: 16;">
+                <Label fx:id="detailHeaderLabel" text="Order items"
+                       style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #4e342e;"/>
+                <Label fx:id="paymentInfoLabel" text="" wrapText="true"
+                       style="-fx-font-size: 13px; -fx-text-fill: #5d4037;"/>
+                <ListView fx:id="itemsListView" prefHeight="160"
+                          style="-fx-background-color: #faf7f4; -fx-background-radius: 8;"/>
+            </VBox>
+
+            <Label fx:id="emptyLabel" text="No orders found."
+                   visible="false" managed="false"
+                   style="-fx-font-size: 14px; -fx-text-fill: #8d6e63;"/>
+        </VBox>
+    </center>
+</BorderPane>

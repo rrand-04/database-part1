@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.vanillacoffeesystem.DashboardController"
+      alignment="CENTER" spacing="16"
+      style="-fx-background-color: #faf8f6;">
+
+    <padding>
+        <Insets top="60" right="40" bottom="60" left="40"/>
+    </padding>
+
+    <Label text="☕" style="-fx-font-size: 40px;"/>
+
+    <Label fx:id="welcomeLabel" text="Welcome!"
+           style="-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #4e342e;"/>
+
+    <Label fx:id="roleLabel" text=""
+           style="-fx-font-size: 14px; -fx-text-fill: #8d6e63;"/>
+
+    <HBox spacing="16" alignment="CENTER" style="-fx-padding: 12 0 0 0;">
+        <Button fx:id="orderButton" text="Place Order" onAction="#openPlaceOrder"
+                prefWidth="140" prefHeight="42"
+                style="-fx-background-color: #6d4c41; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button fx:id="historyButton" text="My Orders" onAction="#openOrderHistory"
+                prefWidth="140" prefHeight="42"
+                style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-border-color: #6d4c41; -fx-border-width: 1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button fx:id="reservationButton" text="Reservations" onAction="#openReservations"
+                prefWidth="140" prefHeight="42"
+                style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-border-color: #6d4c41; -fx-border-width: 1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button fx:id="deliveryButton" text="Deliveries" onAction="#openDeliveries"
+                prefWidth="140" prefHeight="42"
+                style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-border-color: #6d4c41; -fx-border-width: 1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button fx:id="paymentsButton" text="Payments" onAction="#openPayments"
+                prefWidth="140" prefHeight="42"
+                style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-border-color: #6d4c41; -fx-border-width: 1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button text="Browse Menu" onAction="#openMainApp"
+                prefWidth="160" prefHeight="42"
+                style="-fx-background-color: #6d4c41; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 10; -fx-cursor: hand;"/>
+
+        <Button text="Logout" onAction="#handleLogout"
+                prefWidth="120" prefHeight="42"
+                style="-fx-background-color: transparent; -fx-text-fill: #6d4c41; -fx-border-color: #6d4c41; -fx-border-width: 1; -fx-border-radius: 10; -fx-background-radius: 10; -fx-cursor: hand;"/>
+    </HBox>
+</VBox>
