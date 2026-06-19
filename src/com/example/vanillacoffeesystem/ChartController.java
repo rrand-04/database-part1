@@ -13,6 +13,7 @@ import javafx.stage.Stage;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class ChartController {
 
@@ -20,6 +21,10 @@ public class ChartController {
     @FXML private BarChart<String, Number> monthlyOrdersChart;
     @FXML private PieChart spendingByCategoryChart;
     @FXML private PieChart orderStatusChart;
+    @FXML private BarChart<String, Number> spendingByBranchChart;
+    @FXML private Label branchSpendingTotalLabel;
+    @FXML private BarChart<String, Number> myRatingsChart;
+    @FXML private Label ratingsEmptyLabel;
 
     @FXML
     public void initialize() {
@@ -34,6 +39,8 @@ public class ChartController {
         loadMonthlyOrdersChart();
         loadSpendingByCategoryChart();
         loadOrderStatusChart();
+        loadSpendingByBranchChart();
+        loadRatingsChart();
     }
 
     private void loadMonthlyOrdersChart() {
@@ -139,6 +146,107 @@ public class ChartController {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Charts", "Could not load order status chart.");
         }
+    }
+
+    private void loadSpendingByBranchChart() {
+        spendingByBranchChart.getData().clear();
+        spendingByBranchChart.setTitle("Spending by Branch");
+        spendingByBranchChart.setLegendVisible(false);
+
+        String sql = """
+                SELECT b.branch_name, SUM(o.total_price) AS total_spent
+                FROM Orders o
+                JOIN Branches b ON o.branch_id = b.branch_id
+                WHERE o.customer_id = ? AND o.is_active = TRUE
+                GROUP BY b.branch_id, b.branch_name
+                ORDER BY total_spent DESC
+                """;
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Spent (ILS)");
+        double grandTotal = 0;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, SessionManager.getCustomerId());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    double spent = rs.getDouble("total_spent");
+                    grandTotal += spent;
+                    series.getData().add(new XYChart.Data<>(
+                            rs.getString("branch_name"),
+                            spent
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Charts", "Could not load spending by branch chart.");
+        }
+
+        spendingByBranchChart.getData().add(series);
+        branchSpendingTotalLabel.setText(
+                String.format("Total spent across all branches: %.2f ILS", grandTotal));
+    }
+
+    private void loadRatingsChart() {
+        myRatingsChart.getData().clear();
+        myRatingsChart.setTitle("My Product Ratings");
+        myRatingsChart.setLegendVisible(false);
+        myRatingsChart.setVisible(true);
+        myRatingsChart.setManaged(true);
+        ratingsEmptyLabel.setVisible(false);
+        ratingsEmptyLabel.setManaged(false);
+
+        String sql = """
+                SELECT p.product_name, r.rating
+                FROM Review r
+                JOIN Product p ON r.product_id = p.product_id
+                WHERE r.customer_id = ?
+                ORDER BY r.rating DESC
+                """;
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Rating");
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, SessionManager.getCustomerId());
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    series.getData().add(new XYChart.Data<>(
+                            rs.getString("product_name"),
+                            rs.getInt("rating")
+                    ));
+                }
+            }
+
+            if (series.getData().isEmpty()) {
+                showRatingsEmpty();
+                return;
+            }
+
+            myRatingsChart.getData().add(series);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showRatingsEmpty();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showRatingsEmpty();
+        }
+    }
+
+    private void showRatingsEmpty() {
+        myRatingsChart.getData().clear();
+        myRatingsChart.setVisible(false);
+        myRatingsChart.setManaged(false);
+        ratingsEmptyLabel.setText("You haven't reviewed any products yet. Rate items from My Orders after an order is completed.");
+        ratingsEmptyLabel.setVisible(true);
+        ratingsEmptyLabel.setManaged(true);
     }
 
     @FXML

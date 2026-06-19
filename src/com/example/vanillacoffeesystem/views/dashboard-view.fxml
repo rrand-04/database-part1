@@ -117,6 +117,44 @@
                         </VBox>
                     </HBox>
                 </VBox>
+
+                <VBox fx:id="statCardsSection" spacing="14" maxWidth="920" styleClass="card">
+                    <Label text="📈 Your Stats" styleClass="section-title"/>
+                    <HBox spacing="12" alignment="TOP_CENTER">
+                        <VBox spacing="6" style="-fx-background-color: #FFF8E1; -fx-background-radius: 8; -fx-padding: 10; -fx-min-width: 110;">
+                            <Label text="Days Since Last Order"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #8d6e63;"/>
+                            <Label fx:id="statDaysSinceValue" text="—"
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3e2723;"/>
+                        </VBox>
+                        <VBox spacing="6" style="-fx-background-color: #FFF8E1; -fx-background-radius: 8; -fx-padding: 10; -fx-min-width: 110;">
+                            <Label text="Avg Order Value"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #8d6e63;"/>
+                            <Label fx:id="statAvgOrderValue" text="—"
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3e2723;"/>
+                        </VBox>
+                        <VBox spacing="6" style="-fx-background-color: #FFF8E1; -fx-background-radius: 8; -fx-padding: 10; -fx-min-width: 110;">
+                            <Label text="Items Not Tried Yet"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #8d6e63;"/>
+                            <Label fx:id="statUntriedItems" text="—" wrapText="true"
+                                   style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #3e2723;"/>
+                        </VBox>
+                        <VBox spacing="6" style="-fx-background-color: #FFF8E1; -fx-background-radius: 8; -fx-padding: 10; -fx-min-width: 110;">
+                            <Label text="Total Spent All Time"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #8d6e63;"/>
+                            <Label fx:id="statTotalSpentValue" text="—"
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #3e2723;"/>
+                        </VBox>
+                        <VBox fx:id="couponCard" spacing="6"
+                              style="-fx-background-color: #FFF8E1; -fx-background-radius: 8; -fx-padding: 10; -fx-min-width: 160;">
+                            <Label text="Next Coupon Progress"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #8d6e63;"/>
+                            <Label fx:id="statCouponLabel" text="—" wrapText="true"
+                                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #3e2723;"/>
+                            <ProgressBar fx:id="statCouponProgress" prefWidth="140" visible="false" managed="false"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
             </VBox>
         </ScrollPane>
     </center>

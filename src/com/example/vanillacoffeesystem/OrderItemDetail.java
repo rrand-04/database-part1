@@ -2,14 +2,21 @@ package com.example.vanillacoffeesystem;
 
 public class OrderItemDetail {
 
+    private final int productId;
     private final String productName;
     private final int quantity;
     private final double price;
+    private Integer existingRating;
 
-    public OrderItemDetail(String productName, int quantity, double price) {
+    public OrderItemDetail(int productId, String productName, int quantity, double price) {
+        this.productId = productId;
         this.productName = productName;
         this.quantity = quantity;
         this.price = price;
+    }
+
+    public int getProductId() {
+        return productId;
     }
 
     public String getProductName() {
@@ -22,6 +29,21 @@ public class OrderItemDetail {
 
     public double getPrice() {
         return price;
+    }
+
+    public Integer getExistingRating() {
+        return existingRating;
+    }
+
+    public void setExistingRating(Integer existingRating) {
+        this.existingRating = existingRating;
+    }
+
+    public String getDisplayName() {
+        if (existingRating != null) {
+            return productName + " (rated " + existingRating + "/5)";
+        }
+        return productName;
     }
 
     @Override

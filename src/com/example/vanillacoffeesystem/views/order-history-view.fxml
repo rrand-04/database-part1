@@ -57,6 +57,23 @@
                        style="-fx-font-size: 13px; -fx-text-fill: #5d4037;"/>
                 <ListView fx:id="itemsListView" prefHeight="160"
                           style="-fx-background-color: #faf7f4; -fx-background-radius: 8;"/>
+
+                <VBox fx:id="reviewPanel" spacing="10" visible="false" managed="false"
+                      style="-fx-background-color: #f5efe9; -fx-background-radius: 8; -fx-padding: 12;">
+                    <Label text="Rate a product"
+                           style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #4e342e;"/>
+                    <Label fx:id="reviewHintLabel" text="" wrapText="true"
+                           style="-fx-font-size: 12px; -fx-text-fill: #8d6e63;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <ComboBox fx:id="reviewProductCombo" prefWidth="220" promptText="Select item"/>
+                        <Label text="Rating:" style="-fx-font-size: 13px; -fx-text-fill: #5d4037;"/>
+                        <Spinner fx:id="ratingSpinner" prefWidth="70"/>
+                        <TextField fx:id="reviewCommentField" promptText="Optional comment"
+                                   prefWidth="200" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="submitReviewButton" text="Submit Review" onAction="#submitReview"
+                                style="-fx-background-color: #6d4c41; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 14; -fx-cursor: hand;"/>
+                    </HBox>
+                </VBox>
             </VBox>
 
             <Label fx:id="emptyLabel" text="No orders found."

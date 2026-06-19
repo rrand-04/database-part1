@@ -11,6 +11,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.DateCell;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -19,6 +20,7 @@ import javafx.stage.Stage;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 
 public class DashboardController {
@@ -57,11 +59,22 @@ public class DashboardController {
     @FXML private Label yourGoToQtyLabel;
     @FXML private Label yourGoToEmptyLabel;
 
+    @FXML private VBox statCardsSection;
+    @FXML private Label statDaysSinceValue;
+    @FXML private Label statAvgOrderValue;
+    @FXML private Label statUntriedItems;
+    @FXML private Label statTotalSpentValue;
+    @FXML private VBox couponCard;
+    @FXML private Label statCouponLabel;
+    @FXML private ProgressBar statCouponProgress;
+
     @FXML
     public void initialize() {
         if (!SessionManager.isLoggedIn()) {
             topItemsSection.setVisible(false);
             topItemsSection.setManaged(false);
+            statCardsSection.setVisible(false);
+            statCardsSection.setManaged(false);
             return;
         }
 
@@ -73,6 +86,8 @@ public class DashboardController {
             customerSection.setManaged(false);
             staffSection.setVisible(true);
             staffSection.setManaged(true);
+            statCardsSection.setVisible(false);
+            statCardsSection.setManaged(false);
         } else {
             roleLabel.setText("Signed in as Customer");
             customerSection.setVisible(true);
@@ -80,9 +95,14 @@ public class DashboardController {
             staffSection.setVisible(false);
             staffSection.setManaged(false);
             deliveryButton.setText("Delivery Tracking");
+            statCardsSection.setVisible(true);
+            statCardsSection.setManaged(true);
         }
 
         setupTopItemsSection();
+        if (!SessionManager.isEmployee()) {
+            loadStatCards();
+        }
     }
 
     private void setupTopItemsSection() {
@@ -338,6 +358,166 @@ public class DashboardController {
         yourGoToContent.setManaged(true);
     }
 
+    private void loadStatCards() {
+        int customerId = SessionManager.getCustomerId();
+
+        Thread worker = new Thread(() -> {
+            StatCardResult stats = queryStatCards(customerId);
+            Platform.runLater(() -> displayStatCards(stats));
+        });
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private StatCardResult queryStatCards(int customerId) {
+        String daysSql = """
+                SELECT DATEDIFF(CURDATE(), MAX(order_date)) AS days_ago
+                FROM Orders WHERE customer_id = ? AND is_active = TRUE
+                """;
+        String avgSql = """
+                SELECT ROUND(AVG(total_price), 2) AS avg_val
+                FROM Orders WHERE customer_id = ? AND is_active = TRUE
+                """;
+        String untriedSql = """
+                SELECT COUNT(*) AS untried FROM Product p
+                WHERE p.product_id NOT IN (
+                    SELECT DISTINCT oi.product_id
+                    FROM Order_Items oi
+                    JOIN Orders o ON oi.order_id = o.order_id
+                    WHERE o.customer_id = ? AND o.is_active = TRUE
+                )
+                """;
+        String lifetimeSql = """
+                SELECT COALESCE(SUM(total_price), 0) AS lifetime
+                FROM Orders WHERE customer_id = ? AND is_active = TRUE
+                """;
+        String couponSql = """
+                SELECT GREATEST(0, 100 - COALESCE(SUM(total_price), 0)) AS remaining
+                FROM Orders
+                WHERE customer_id = ?
+                  AND order_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                  AND is_active = TRUE
+                """;
+
+        Integer daysAgo = null;
+        Double avgVal = null;
+        int untried = 0;
+        double lifetime = 0;
+        Double couponRemaining = null;
+        boolean couponSupported = tableExists("Coupon");
+
+        try (Connection con = DBConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement(daysSql)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getObject("days_ago") != null) {
+                        daysAgo = rs.getInt("days_ago");
+                    }
+                }
+            }
+
+            try (PreparedStatement ps = con.prepareStatement(avgSql)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getObject("avg_val") != null) {
+                        avgVal = rs.getDouble("avg_val");
+                    }
+                }
+            }
+
+            try (PreparedStatement ps = con.prepareStatement(untriedSql)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        untried = rs.getInt("untried");
+                    }
+                }
+            }
+
+            try (PreparedStatement ps = con.prepareStatement(lifetimeSql)) {
+                ps.setInt(1, customerId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        lifetime = rs.getDouble("lifetime");
+                    }
+                }
+            }
+
+            if (couponSupported) {
+                try (PreparedStatement ps = con.prepareStatement(couponSql)) {
+                    ps.setInt(1, customerId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            couponRemaining = rs.getDouble("remaining");
+                        }
+                    }
+                } catch (SQLException e) {
+                    couponSupported = false;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return new StatCardResult(daysAgo, avgVal, untried, lifetime, couponRemaining, couponSupported);
+    }
+
+    private boolean tableExists(String tableName) {
+        String sql = """
+                SELECT COUNT(*) AS cnt
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = 'vanilla_db' AND TABLE_NAME = ?
+                """;
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, tableName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt("cnt") > 0;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void displayStatCards(StatCardResult stats) {
+        if (stats.daysAgo() == null) {
+            statDaysSinceValue.setText("No orders yet");
+        } else {
+            statDaysSinceValue.setText(stats.daysAgo() + " days ago");
+        }
+
+        if (stats.avgVal() == null) {
+            statAvgOrderValue.setText("—");
+        } else {
+            statAvgOrderValue.setText(String.format("%.2f ILS", stats.avgVal()));
+        }
+
+        statUntriedItems.setText(stats.untried() + " items — try something new!");
+        statTotalSpentValue.setText(String.format("%.2f ILS", stats.lifetime()));
+
+        if (!stats.couponSupported() || stats.couponRemaining() == null) {
+            couponCard.setVisible(false);
+            couponCard.setManaged(false);
+            return;
+        }
+
+        couponCard.setVisible(true);
+        couponCard.setManaged(true);
+
+        if (stats.couponRemaining() <= 0) {
+            statCouponLabel.setText("🎉 Coupon earned this month!");
+            statCouponProgress.setVisible(false);
+            statCouponProgress.setManaged(false);
+        } else {
+            double spentThisMonth = 100.0 - stats.couponRemaining();
+            statCouponProgress.setProgress(Math.min(1.0, spentThisMonth / 100.0));
+            statCouponProgress.setVisible(true);
+            statCouponProgress.setManaged(true);
+            statCouponLabel.setText(String.format(
+                    "Spend %.2f more ILS to earn a coupon", stats.couponRemaining()));
+        }
+    }
+
     @FXML
     public void openOrderHistory() throws Exception {
         navigate("order-history-view.fxml", "Vanilla Coffee - My Orders");
@@ -409,5 +589,15 @@ public class DashboardController {
     }
 
     private record TopItemResult(String productName, String productCategory, int totalQty) {
+    }
+
+    private record StatCardResult(
+            Integer daysAgo,
+            Double avgVal,
+            int untried,
+            double lifetime,
+            Double couponRemaining,
+            boolean couponSupported
+    ) {
     }
 }

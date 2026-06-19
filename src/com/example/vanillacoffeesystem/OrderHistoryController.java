@@ -17,12 +17,16 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+
+import javafx.util.StringConverter;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -46,10 +50,17 @@ public class OrderHistoryController {
     @FXML private Label detailHeaderLabel;
     @FXML private Label paymentInfoLabel;
     @FXML private ListView<OrderItemDetail> itemsListView;
+    @FXML private VBox reviewPanel;
+    @FXML private ComboBox<OrderItemDetail> reviewProductCombo;
+    @FXML private Spinner<Integer> ratingSpinner;
+    @FXML private TextField reviewCommentField;
+    @FXML private Button submitReviewButton;
+    @FXML private Label reviewHintLabel;
     @FXML private Label emptyLabel;
 
     private final ObservableList<OrderHistoryRecord> orders = FXCollections.observableArrayList();
     private final ObservableList<OrderItemDetail> orderItems = FXCollections.observableArrayList();
+    private OrderHistoryRecord selectedOrderForReview;
 
     @FXML
     public void initialize() {
@@ -95,6 +106,20 @@ public class OrderHistoryController {
 
         ordersTable.setItems(orders);
         itemsListView.setItems(orderItems);
+
+        ratingSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 5, 5));
+        reviewProductCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(OrderItemDetail item) {
+                return item == null ? "" : item.getDisplayName();
+            }
+
+            @Override
+            public OrderItemDetail fromString(String string) {
+                return null;
+            }
+        });
+        reviewProductCombo.setOnAction(e -> onReviewProductSelected());
 
         ordersTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, selected) -> {
             updateCancelUi(selected);
@@ -265,11 +290,12 @@ public class OrderHistoryController {
 
     private void onOrderSelected(OrderHistoryRecord order) {
         orderItems.clear();
+        selectedOrderForReview = order;
         detailHeaderLabel.setText("Order #" + order.getOrderId() + " — Items");
         paymentInfoLabel.setText(loadPaymentInfo(order.getOrderId()));
 
         String sql = """
-                SELECT p.product_name, oi.quantity, oi.price
+                SELECT p.product_id, p.product_name, oi.quantity, oi.price
                 FROM Order_Items oi
                 JOIN Product p ON oi.product_id = p.product_id
                 WHERE oi.order_id = ?
@@ -283,11 +309,15 @@ public class OrderHistoryController {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    orderItems.add(new OrderItemDetail(
+                    OrderItemDetail item = new OrderItemDetail(
+                            rs.getInt("product_id"),
                             rs.getString("product_name"),
                             rs.getInt("quantity"),
                             rs.getDouble("price")
-                    ));
+                    );
+                    Integer rating = ReviewHelper.getRating(SessionManager.getCustomerId(), item.getProductId());
+                    item.setExistingRating(rating);
+                    orderItems.add(item);
                 }
             }
 
@@ -299,6 +329,90 @@ public class OrderHistoryController {
 
         detailPanel.setVisible(true);
         detailPanel.setManaged(true);
+        setupReviewPanel(order);
+    }
+
+    private void setupReviewPanel(OrderHistoryRecord order) {
+        reviewPanel.setVisible(false);
+        reviewPanel.setManaged(false);
+
+        if (!ReviewHelper.isAvailable()) {
+            return;
+        }
+
+        boolean completed = order.isActive()
+                && "Completed".equalsIgnoreCase(order.getOrderStatus());
+
+        if (!completed || orderItems.isEmpty()) {
+            if (order.isActive() && "Pending".equalsIgnoreCase(order.getOrderStatus())) {
+                reviewHintLabel.setText("You can rate items after the order is completed.");
+                reviewPanel.setVisible(true);
+                reviewPanel.setManaged(true);
+                reviewProductCombo.setDisable(true);
+                submitReviewButton.setDisable(true);
+                ratingSpinner.setDisable(true);
+                reviewCommentField.setDisable(true);
+            }
+            return;
+        }
+
+        reviewProductCombo.setItems(FXCollections.observableArrayList(orderItems));
+        reviewProductCombo.getSelectionModel().selectFirst();
+        reviewProductCombo.setDisable(false);
+        ratingSpinner.setDisable(false);
+        reviewCommentField.setDisable(false);
+        submitReviewButton.setDisable(false);
+        reviewHintLabel.setText("Rate products from this completed order (1–5 stars).");
+        onReviewProductSelected();
+        reviewPanel.setVisible(true);
+        reviewPanel.setManaged(true);
+    }
+
+    private void onReviewProductSelected() {
+        OrderItemDetail item = reviewProductCombo.getValue();
+        if (item == null) {
+            return;
+        }
+        int rating = item.getExistingRating() != null ? item.getExistingRating() : 5;
+        ratingSpinner.getValueFactory().setValue(rating);
+    }
+
+    @FXML
+    public void submitReview() {
+        if (selectedOrderForReview == null || !ReviewHelper.isAvailable()) {
+            return;
+        }
+
+        OrderItemDetail item = reviewProductCombo.getValue();
+        if (item == null) {
+            showAlert(Alert.AlertType.WARNING, "Review", "Please select a product to rate.");
+            return;
+        }
+
+        int rating = ratingSpinner.getValue();
+        if (rating < 1 || rating > 5) {
+            showAlert(Alert.AlertType.WARNING, "Review", "Rating must be between 1 and 5.");
+            return;
+        }
+
+        boolean saved = ReviewHelper.saveReview(
+                SessionManager.getCustomerId(),
+                item.getProductId(),
+                selectedOrderForReview.getOrderId(),
+                rating,
+                reviewCommentField.getText()
+        );
+
+        if (saved) {
+            item.setExistingRating(rating);
+            reviewProductCombo.setItems(FXCollections.observableArrayList(orderItems));
+            reviewProductCombo.getSelectionModel().select(item);
+            reviewCommentField.clear();
+            showAlert(Alert.AlertType.INFORMATION, "Review Saved",
+                    "Thanks! Your rating for " + item.getProductName() + " was saved.");
+        } else {
+            showAlert(Alert.AlertType.ERROR, "Review", "Could not save your review. Please try again.");
+        }
     }
 
     private String loadPaymentInfo(int orderId) {
@@ -353,7 +467,10 @@ public class OrderHistoryController {
 
     private void hideDetailPanel() {
         orderItems.clear();
+        selectedOrderForReview = null;
         paymentInfoLabel.setText("");
+        reviewPanel.setVisible(false);
+        reviewPanel.setManaged(false);
         detailPanel.setVisible(false);
         detailPanel.setManaged(false);
     }
