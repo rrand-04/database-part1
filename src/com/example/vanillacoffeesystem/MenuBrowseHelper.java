@@ -34,7 +34,7 @@ public class MenuBrowseHelper {
     );
 
     private static final List<String> DEFAULT_CATEGORIES = List.of(
-            "All", "Food", "Drinks", "Desserts"
+            "All", "Drinks", "Desserts"
     );
 
     private final HBox categoryBar;
@@ -68,6 +68,7 @@ public class MenuBrowseHelper {
                 FROM Branch_Product bp
                 JOIN Product p ON bp.product_id = p.product_id
                 WHERE bp.branch_id = ? AND bp.is_available = TRUE
+                  AND p.product_category <> 'hookah'
                 ORDER BY p.product_category, p.product_name
                 """;
 
@@ -90,10 +91,46 @@ public class MenuBrowseHelper {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            loadForBranchFallback(branchId);
         }
 
         buildCategoryBar();
         renderMenu();
+    }
+
+    private void loadForBranchFallback(int branchId) {
+        allItems.clear();
+        String sql = """
+                SELECT p.product_id, p.product_name, p.product_category, p.product_description,
+                       COALESCE(bp.branch_price, p.product_price) AS price,
+                       bp.is_available
+                FROM Branch_Product bp
+                JOIN Product p ON bp.product_id = p.product_id
+                WHERE bp.branch_id = ? AND bp.is_available = TRUE
+                  AND p.product_category <> 'hookah'
+                ORDER BY p.product_category, p.product_name
+                """;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setInt(1, branchId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    allItems.add(new MenuItem(
+                            rs.getInt("product_id"),
+                            rs.getString("product_name"),
+                            rs.getString("product_category"),
+                            rs.getDouble("price"),
+                            rs.getString("product_description"),
+                            rs.getBoolean("is_available"),
+                            null
+                    ));
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     public void clear() {

@@ -60,7 +60,6 @@ public class MenuItem {
             case "International" -> "🌍";
             case "Meats" -> "🥩";
             case "Om Ali" -> "🍮";
-            case "hookah" -> "💨";
             case "Food" -> "🥐";
             case "Drinks" -> "☕";
             case "Espresso Hot" -> "☕";

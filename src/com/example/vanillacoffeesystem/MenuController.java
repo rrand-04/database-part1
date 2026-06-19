@@ -37,7 +37,7 @@ public class MenuController {
     );
 
     private static final List<String> DEFAULT_CATEGORIES = List.of(
-            "All", "Food", "Drinks", "Desserts"
+            "All", "Drinks", "Desserts"
     );
 
     @FXML private Label branchLabel;
@@ -84,6 +84,7 @@ public class MenuController {
                 FROM Branch_Product bp
                 JOIN Product p ON bp.product_id = p.product_id
                 WHERE bp.branch_id = ? AND bp.is_available = TRUE
+                  AND p.product_category <> 'hookah'
                 ORDER BY p.product_category, p.product_name
                 """;
 
@@ -116,10 +117,11 @@ public class MenuController {
         allItems.clear();
         String sql = """
                 SELECT p.product_id, p.product_name, p.product_category, p.product_description,
-                       p.product_price AS price, bp.is_available, p.image_file
+                       p.product_price AS price, bp.is_available
                 FROM Branch_Product bp
                 JOIN Product p ON bp.product_id = p.product_id
                 WHERE bp.branch_id = ? AND bp.is_available = TRUE
+                  AND p.product_category <> 'hookah'
                 ORDER BY p.product_category, p.product_name
                 """;
 
@@ -137,7 +139,7 @@ public class MenuController {
                             rs.getDouble("price"),
                             rs.getString("product_description"),
                             rs.getBoolean("is_available"),
-                            rs.getString("image_file")
+                            null
                     ));
                 }
             }
